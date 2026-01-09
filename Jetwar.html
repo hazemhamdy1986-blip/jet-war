@@ -3,205 +3,282 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JET FIGHTER - HATEM WAR PRO</title>
-    <script src="https://telegram.org/js/games.js"></script>
+    <title>HATEM WAR PRO - ULTIMATE</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000b1a; touch-action: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; overflow: hidden; background: #00081a; touch-action: none; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
-        
-        /* واجهة المستخدم المحترفة */
         #hud {
             position: absolute; top: 15px; left: 15px; color: #00f2ff;
-            background: rgba(0, 20, 40, 0.8); padding: 15px; border-radius: 12px;
-            border: 2px solid #00f2ff; pointer-events: none; box-shadow: 0 0 20px #00f2ff;
+            background: rgba(0, 20, 40, 0.85); padding: 15px; border-radius: 12px;
+            border: 2px solid #00f2ff; pointer-events: none; z-index: 10; box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
         }
-        
-        /* الخريطة فوق على اليمين */
-        #minimap-container {
-            position: absolute; top: 15px; right: 15px; width: 120px; height: 120px;
-            background: rgba(0, 40, 0, 0.6); border: 2px solid #00ff00; border-radius: 10px;
+        #minimap {
+            position: absolute; top: 15px; right: 15px; width: 115px; height: 115px;
+            background: rgba(0, 40, 0, 0.5); border: 2px solid #00ff00; border-radius: 10px; z-index: 10;
         }
-
-        /* أزرار التحكم */
-        .game-btn {
-            position: absolute; width: 80px; height: 80px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; font-size: 14px; cursor: pointer;
-            user-select: none; border: 3px solid rgba(255,255,255,0.5);
+        .controls { position: absolute; bottom: 30px; right: 20px; display: flex; gap: 20px; z-index: 20; }
+        .btn {
+            width: 85px; height: 85px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5);
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;
+            user-select: none; -webkit-user-select: none; font-size: 14px;
         }
-        #fire-btn { bottom: 40px; right: 40px; background: radial-gradient(#ff0000, #990000); box-shadow: 0 0 20px #ff0000; }
-        #shop-btn { bottom: 40px; right: 140px; background: radial-gradient(#ffaa00, #b87b00); box-shadow: 0 0 20px #ffaa00; }
-
-        /* قايمة المتجر */
-        #shop-menu {
+        #fire { background: radial-gradient(#ff3300, #990000); box-shadow: 0 0 20px #ff3300; }
+        #shop-btn { background: radial-gradient(#ffaa00, #b87b00); box-shadow: 0 0 20px #ffaa00; }
+        #shop-ui {
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 80%; background: rgba(0, 20, 40, 0.95); border: 3px solid #00f2ff;
-            border-radius: 20px; padding: 20px; color: white; text-align: center; z-index: 100;
+            width: 85%; max-width: 400px; background: rgba(0, 15, 35, 0.98); border: 3px solid #00f2ff;
+            border-radius: 20px; color: white; padding: 25px; z-index: 100; text-align: center;
         }
-        .shop-item { background: rgba(0, 242, 255, 0.2); padding: 10px; margin: 10px; border-radius: 10px; border: 1px solid #00f2ff; cursor: pointer; }
+        .shop-item {
+            background: rgba(0, 242, 255, 0.1); border: 1px solid #00f2ff;
+            margin: 12px 0; padding: 12px; border-radius: 10px; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; transition: 0.3s;
+        }
+        .shop-item:active { background: #00f2ff; color: black; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div style="font-size: 1.2em; border-bottom: 1px solid #00f2ff; padding-bottom: 5px;">HATEM WAR PRO</div>
-    <div style="margin-top: 8px;">SCORE: <span id="score" style="color: yellow;">0</span></div>
-    <div style="font-size: 0.8em; color: #00ff00;">PLAYERS ONLINE: <span id="online-count">14</span></div>
+    <div style="font-weight: bold; font-size: 1.1em; color: #00f2ff; letter-spacing: 1px;">HATEM WAR PRO</div>
+    <div style="margin-top: 8px;">SCORE: <span id="score" style="color:yellow">0</span></div>
+    <div style="color: #ff00ff; font-weight: bold;">YOUR LVL: <span id="p-lvl">1</span></div>
+    <div style="font-size: 0.8em; color: #00ff00; margin-top: 5px;">PLAYERS ONLINE: 14</div>
 </div>
 
-<div id="minimap-container">
-    <canvas id="minimapCanvas"></canvas>
+<canvas id="minimap"></canvas>
+
+<div id="shop-ui">
+    <h2 style="color: #ffaa00; margin-bottom: 20px;">WAR SHOP</h2>
+    <div class="shop-item" onclick="buy('rearFire', 500)"><span>Rear Fire</span> <span>500</span></div>
+    <div class="shop-item" onclick="buy('shield', 300)"><span>Energy Shield</span> <span>300</span></div>
+    <div class="shop-item" onclick="buy('megaBolt', 1000)"><span>Mega Bolt</span> <span>1000</span></div>
+    <div class="shop-item" onclick="buy('speedBoost', 400)"><span>Extra Thrust</span> <span>400</span></div>
+    <button onclick="toggleShop()" style="margin-top:20px; background:#900; color:white; border:none; padding:12px 30px; border-radius:8px; font-weight:bold;">CLOSE</button>
 </div>
 
-<div id="fire-btn" class="game-btn">FIRE</div>
-<div id="shop-btn" class="game-btn">SHOP</div>
-
-<div id="shop-menu">
-    <h2>WAR SHOP</h2>
-    <div class="shop-item" onclick="upgradeWeapon()">Double Cannon (Cost: 500)</div>
-    <div class="shop-item" onclick="upgradeSpeed()">Extra Thrust (Cost: 300)</div>
-    <div class="shop-item" onclick="closeShop()" style="background: #900;">CLOSE</div>
+<div class="controls">
+    <div id="shop-btn" class="btn" onclick="toggleShop()">SHOP</div>
+    <div id="fire" class="btn">FIRE</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
 <script>
-const WORLD_SIZE = 10000;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const mCanvas = document.getElementById('minimapCanvas');
+const mCanvas = document.getElementById('minimap');
 const mCtx = mCanvas.getContext('2d');
 
 let w, h;
-const player = { x: WORLD_SIZE/2, y: WORLD_SIZE/2, angle: 0, speed: 0, maxSpeed: 16, score: 0, weaponLevel: 1 };
-let ammos = [], bullets = [], enemies = [];
-const joy = { active: false, x: 0, y: 0, currX: 0, currY: 0, r: 70 };
-
-const jetImg = new Image(); jetImg.src = 'https://raw.githubusercontent.com/Almasi/Gaze/master/assets/images/ship.png';
-const bgImg = new Image(); bgImg.src = 'https://raw.githubusercontent.com/Almasi/Gaze/master/assets/images/starfield.png';
+const WORLD_SIZE = 8000;
+const player = { 
+    x: 4000, y: 4000, angle: 0, speed: 0, maxSpeed: 10, score: 0, 
+    level: 1, scale: 1, rearFire: false, hasShield: false, megaBolt: false 
+};
+const joy = { active: false, id: null, x: 0, y: 0, currX: 0, currY: 0, r: 65 };
+let bullets = [], enemies = [], ammos = [];
 
 function init() {
     resize();
-    for(let i=0; i<200; i++) ammos.push({ x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE });
-    for(let i=0; i<15; i++) enemies.push({ x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, angle: Math.random()*Math.PI*2 });
+    spawnEnemies(25);
+    for(let i=0; i<60; i++) ammos.push({x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE});
     requestAnimationFrame(loop);
+}
+
+function spawnEnemies(count) {
+    for(let i=0; i<count; i++) {
+        const lvl = Math.ceil(Math.random() * 10);
+        enemies.push({
+            x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, 
+            level: lvl, size: 18 + (lvl * 4), color: `hsl(${lvl * 36}, 85%, 50%)`
+        });
+    }
 }
 
 function resize() {
     w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight;
-    mCanvas.width = 120; mCanvas.height = 120;
+    mCanvas.width = 115; mCanvas.height = 115;
 }
 
-// أزرار التحكم
-document.getElementById('fire-btn').addEventListener('touchstart', shoot);
-document.getElementById('shop-btn').addEventListener('touchstart', () => { document.getElementById('shop-menu').style.display = 'block'; });
-
-function closeShop() { document.getElementById('shop-menu').style.display = 'none'; }
-function upgradeWeapon() { if(player.score >= 500) { player.score -= 500; player.weaponLevel = 2; updateScore(); closeShop(); } }
-function updateScore() { document.getElementById('score').innerText = player.score; }
-
-function shoot() {
-    bullets.push({ x: player.x, y: player.y, angle: player.angle, life: 60 });
+function toggleShop() {
+    const s = document.getElementById('shop-ui');
+    s.style.display = (s.style.display === 'block') ? 'none' : 'block';
 }
 
-// التحكم بالحركة
+function buy(item, cost) {
+    if(player.score >= cost) {
+        player.score -= cost;
+        document.getElementById('score').innerText = player.score;
+        if(item === 'rearFire') player.rearFire = true;
+        if(item === 'shield') player.hasShield = true;
+        if(item === 'megaBolt') player.megaBolt = true;
+        if(item === 'speedBoost') player.maxSpeed += 3;
+    } else { alert("Score Not Enough!"); }
+}
+
+// رسم الطائرة بالشكل "الأحلى" (المرسوم برمجياً بدقة عالية)
+function drawPlayerJet() {
+    ctx.save();
+    ctx.translate(w/2, h/2);
+    ctx.rotate(player.angle + Math.PI/2);
+    ctx.scale(player.scale, player.scale);
+
+    if(player.hasShield) {
+        ctx.strokeStyle = '#00f2ff'; ctx.lineWidth = 3;
+        ctx.shadowBlur = 15; ctx.shadowColor = '#00f2ff';
+        ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // وهج المحرك
+    if(player.speed > 1) {
+        ctx.fillStyle = '#44ccff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00f2ff';
+        ctx.beginPath(); ctx.moveTo(-10, 25); ctx.lineTo(0, 55 + Math.random()*15); ctx.lineTo(10, 25); ctx.fill();
+    }
+
+    // جسم الطائرة الاحترافي
+    ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0, 242, 255, 0.5)';
+    ctx.fillStyle = '#f0f0f0'; // تدرج فضي
+    ctx.beginPath();
+    ctx.moveTo(0, -45); // الأنف
+    ctx.lineTo(-35, 25); // الجناح الأيسر
+    ctx.lineTo(-10, 15); // كسر الجناح
+    ctx.lineTo(0, 20);   // الجسم الخلفي
+    ctx.lineTo(10, 15);
+    ctx.lineTo(35, 25);  // الجناح الأيمن
+    ctx.closePath(); ctx.fill();
+
+    // القمرة
+    ctx.fillStyle = '#001a33';
+    ctx.beginPath(); ctx.ellipse(0, -15, 8, 18, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+}
+
+// Multitouch (تثبيت التحكم المزدوج)
 window.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    if(t.clientX < w/2) { joy.active = true; joy.x = t.clientX; joy.y = t.clientY; joy.currX = t.clientX; joy.currY = t.clientY; }
-});
+    for(let i=0; i<e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if(t.clientX < w/2 && !joy.active) {
+            joy.active = true; joy.id = t.identifier;
+            joy.x = t.clientX; joy.y = t.clientY; joy.currX = t.clientX; joy.currY = t.clientY;
+        }
+    }
+}, {passive: false});
 
 window.addEventListener('touchmove', e => {
-    if(!joy.active) return;
-    const t = e.touches[0];
-    const dx = t.clientX - joy.x; const dy = t.clientY - joy.y;
-    const angle = Math.atan2(dy, dx);
-    const dist = Math.min(Math.sqrt(dx*dx + dy*dy), joy.r);
-    joy.currX = joy.x + Math.cos(angle) * dist;
-    joy.currY = joy.y + Math.sin(angle) * dist;
-    player.angle = angle; player.speed = (dist/joy.r) * player.maxSpeed;
+    for(let i=0; i<e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if(joy.active && t.identifier === joy.id) {
+            const dx = t.clientX - joy.x, dy = t.clientY - joy.y;
+            const dist = Math.min(Math.sqrt(dx*dx + dy*dy), joy.r);
+            const ang = Math.atan2(dy, dx);
+            joy.currX = joy.x + Math.cos(ang) * dist;
+            joy.currY = joy.y + Math.sin(ang) * dist;
+            player.angle = ang; player.speed = (dist/joy.r) * player.maxSpeed;
+        }
+    }
+}, {passive: false});
+
+window.addEventListener('touchend', e => {
+    for(let i=0; i<e.changedTouches.length; i++) {
+        if(joy.active && e.changedTouches[i].identifier === joy.id) {
+            joy.active = false; joy.id = null; player.speed *= 0.5;
+        }
+    }
 });
 
-window.addEventListener('touchend', () => { joy.active = false; player.speed *= 0.92; });
-
-function drawPlayer() {
-    ctx.save();
-    ctx.translate(w/2, h/2); ctx.rotate(player.angle + Math.PI/2);
-    if(player.speed > 2) {
-        ctx.fillStyle = '#44ccff'; ctx.shadowBlur = 25; ctx.shadowColor = '#00f2ff';
-        ctx.beginPath(); ctx.moveTo(-8, 20); ctx.lineTo(0, 50 + Math.random()*20); ctx.lineTo(8, 20); ctx.fill();
-    }
-    ctx.drawImage(jetImg, -35, -35, 70, 70);
-    ctx.restore();
-}
-
-function update() {
-    player.x += Math.cos(player.angle) * player.speed;
-    player.y += Math.sin(player.angle) * player.speed;
-    player.x = Math.max(0, Math.min(WORLD_SIZE, player.x));
-    player.y = Math.max(0, Math.min(WORLD_SIZE, player.y));
-
-    // تحديث الطلقات
-    bullets.forEach((b, i) => {
-        b.x += Math.cos(b.angle) * 25; b.y += Math.sin(b.angle) * 25; b.life--;
-        if(b.life <= 0) bullets.splice(i, 1);
+document.getElementById('fire').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const isMega = player.megaBolt;
+    const offsets = [-20, 0, 20];
+    offsets.forEach(off => {
+        const bx = player.x + Math.cos(player.angle + Math.PI/2) * off;
+        const by = player.y + Math.sin(player.angle + Math.PI/2) * off;
+        bullets.push({x: bx, y: by, angle: player.angle, life: 50, isMega: isMega});
+        if(player.rearFire) bullets.push({x: bx, y: by, angle: player.angle + Math.PI, life: 30, isMega: isMega});
     });
-
-    // جمع الذخيرة
-    ammos = ammos.filter(a => {
-        if(Math.sqrt((player.x-a.x)**2 + (player.y-a.y)**2) < 50) {
-            player.score += 10; updateScore(); return false;
-        }
-        return true;
-    });
-}
+});
 
 function draw() {
-    ctx.fillStyle = '#000510'; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = '#00081a'; ctx.fillRect(0,0,w,h);
     
-    // الخلفية
-    ctx.save(); ctx.globalAlpha = 0.5;
-    let bgX = (-(player.x * 0.3) % w); let bgY = (-(player.y * 0.3) % h);
-    for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) ctx.drawImage(bgImg, bgX + i*w, bgY + j*h, w, h);
-    ctx.restore();
+    // النجوم
+    ctx.fillStyle = "white";
+    for(let i=0; i<40; i++) {
+        let x = (Math.sin(i*2)*WORLD_SIZE - player.x*0.2) % w;
+        let y = (Math.cos(i*2)*WORLD_SIZE - player.y*0.2) % h;
+        if(x<0) x+=w; if(y<0) y+=h;
+        ctx.fillRect(x, y, 2, 2);
+    }
 
-    ctx.save(); ctx.translate(w/2 - player.x, h/2 - player.y);
+    ctx.save();
+    ctx.translate(w/2 - player.x, h/2 - player.y);
     
-    // رسم الطلقات
-    bullets.forEach(b => {
-        ctx.fillStyle = '#00f2ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#00f2ff';
-        ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
-    });
-
-    // رسم الذخيرة
+    // الذخيرة
     ammos.forEach(a => {
-        ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(a.x, a.y, 8, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(a.x, a.y, 6, 0, Math.PI*2); ctx.fill();
     });
 
-    // رسم الأعداء
+    // الرصاص والأعداء
+    bullets.forEach((b, bi) => {
+        b.x += Math.cos(b.angle)*22; b.y += Math.sin(b.angle)*22; b.life--;
+        ctx.fillStyle = b.isMega ? '#ff00ff' : '#00f2ff';
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.isMega ? 12 : 5, 0, Math.PI*2); ctx.fill();
+        
+        enemies.forEach((e, ei) => {
+            if(Math.sqrt((b.x-e.x)**2 + (b.y-e.y)**2) < e.size) {
+                if(player.level >= e.level || b.isMega) {
+                    player.score += e.level * 15;
+                    player.scale += 0.008; // زيادة طفيفة جداً كما طلبت
+                    if(player.score > player.level * 200) player.level++;
+                    document.getElementById('p-lvl').innerText = player.level;
+                    document.getElementById('score').innerText = player.score;
+                    enemies.splice(ei, 1); spawnEnemies(1);
+                }
+                bullets.splice(bi, 1);
+            }
+        });
+        if(b.life <= 0) bullets.splice(bi, 1);
+    });
+
     enemies.forEach(e => {
-        ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(e.x, e.y, 15, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "white"; ctx.font = "bold 14px Arial"; ctx.fillText("LVL " + e.level, e.x-18, e.y+5);
     });
 
     ctx.restore();
-    drawPlayer();
+    drawPlayerJet();
 
     if(joy.active) {
-        ctx.strokeStyle = 'rgba(0, 242, 255, 0.2)'; ctx.beginPath(); ctx.arc(joy.x, joy.y, joy.r, 0, Math.PI*2); ctx.stroke();
-        ctx.fillStyle = 'rgba(0, 242, 255, 0.4)'; ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 25, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 242, 255, 0.3)'; ctx.beginPath(); ctx.arc(joy.x, joy.y, joy.r, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = 'rgba(0, 242, 255, 0.4)'; ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 28, 0, Math.PI*2); ctx.fill();
     }
     drawMinimap();
 }
 
 function drawMinimap() {
-    mCtx.clearRect(0,0,120,120);
-    const s = 120/WORLD_SIZE;
-    mCtx.fillStyle = '#00ff00'; mCtx.beginPath(); mCtx.arc(player.x*s, player.y*s, 4, 0, Math.PI*2); mCtx.fill();
-    mCtx.fillStyle = 'red'; enemies.forEach(e => mCtx.fillRect(e.x*s, e.y*s, 2, 2));
+    mCtx.clearRect(0,0,115,115);
+    const s = 115/WORLD_SIZE;
+    mCtx.fillStyle = '#00ff00'; mCtx.beginPath(); mCtx.arc(player.x*s, player.y*s, 5, 0, Math.PI*2); mCtx.fill();
+    mCtx.fillStyle = 'red'; enemies.forEach(e => mCtx.fillRect(e.x*s, e.y*s, 3, 3));
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
-init();
-window.addEventListener('resize', resize);
+function loop() {
+    player.x += Math.cos(player.angle)*player.speed;
+    player.y += Math.sin(player.angle)*player.speed;
+    player.x = Math.max(0, Math.min(WORLD_SIZE, player.x));
+    player.y = Math.max(0, Math.min(WORLD_SIZE, player.y));
+    
+    ammos = ammos.filter(a => {
+        if(Math.sqrt((player.x-a.x)**2 + (player.y-a.y)**2) < 40) {
+            player.score += 5; document.getElementById('score').innerText = player.score; return false;
+        }
+        return true;
+    });
+    
+    draw(); requestAnimationFrame(loop);
+}
+init(); window.addEventListener('resize', resize);
 </script>
 </body>
 </html>
