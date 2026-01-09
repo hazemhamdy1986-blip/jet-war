@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JET FIGHTER - HATEM WAR</title>
+    <script src="https://telegram.org/js/games.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000510; font-family: 'Segoe UI', sans-serif; }
+        canvas { display: block; }
+        #ui-layer { 
+            position: absolute; top: 20px; left: 20px; color: #00e5ff; 
+            background: rgba(0,20,40,0.8); padding: 15px; border-radius: 12px;
+            border: 2px solid #00e5ff; pointer-events: none;
+        }
+        #minimap { 
+            position: absolute; top: 10px; right: 10px; 
+            width: 150px; height: 150px; 
+            background: rgba(0,0,0,0.8); border: 2px solid #ff0055; 
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui-layer">
+    <div style="font-weight: bold; font-size: 1.2em;">JET FIGHTER</div>
+    <div style="font-size: 0.8em; color: #aaa;">HATEM WAR</div>
+    <hr style="border: 0.5px solid #00e5ff; margin: 5px 0;">
+    <div>SCORE: <span id="ammo-count" style="color:white">0</span></div>
+    <div>ALTITUDE: <span id="level" style="color:white">1</span></div>
+</div>
+<canvas id="minimap"></canvas>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const WORLD_SIZE = 10000;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const mCanvas = document.getElementById('minimap');
+const mCtx = mCanvas.getContext('2d');
+
+let width, height;
+const player = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, angle: 0, speed: 0, maxSpeed: 12, ammo: 0, level: 1 };
+let ammos = [];
+const joystick = { active: false, baseX: 120, baseY: 0, currX: 120, currY: 0, limit: 70 };
+
+function init() {
+    resize();
+    for(let i=0; i<200; i++) ammos.push({ x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE });
+    joystick.baseY = height - 120;
+    requestAnimationFrame(gameLoop);
+}
+
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+}
+
+window.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if(t.clientX < width/2) {
+        joystick.active = true;
+        joystick.baseX = t.clientX; joystick.baseY = t.clientY;
+    }
+});
+
+window.addEventListener('touchmove', e => {
+    if(!joystick.active) return;
+    const t = e.touches[0];
+    const dx = t.clientX - joystick.baseX;
+    const dy = t.clientY - joystick.baseY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const angle = Math.atan2(dy, dx);
+    const moveDist = Math.min(dist, joystick.limit);
+    joystick.currX = joystick.baseX + Math.cos(angle) * moveDist;
+    joystick.currY = joystick.baseY + Math.sin(angle) * moveDist;
+    player.angle = angle;
+    player.speed = (moveDist / joystick.limit) * player.maxSpeed;
+});
+
+window.addEventListener('touchend', () => { joystick.active = false; player.speed = 0; });
+
+function drawJet(x, y, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    // المحرك
+    if(player.speed > 1) {
+        ctx.fillStyle = "#ffaa00";
+        ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-40, 0); ctx.lineTo(-20, 10); ctx.fill();
+    }
+    // الجسم
+    ctx.fillStyle = "#d1d1d1";
+    ctx.beginPath();
+    ctx.moveTo(30, 0); ctx.lineTo(-15, -20); ctx.lineTo(-15, 20);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+}
+
+function update() {
+    player.x += Math.cos(player.angle) * player.speed;
+    player.y += Math.sin(player.angle) * player.speed;
+    player.x = Math.max(0, Math.min(WORLD_SIZE, player.x));
+    player.y = Math.max(0, Math.min(WORLD_SIZE, player.y));
+
+    ammos = ammos.filter(a => {
+        const d = Math.sqrt((player.x - a.x)**2 + (player.y - a.y)**2);
+        if(d < 40) {
+            player.ammo++;
+            document.getElementById('ammo-count').innerText = player.ammo;
+            return false;
+        }
+        return true;
+    });
+}
+
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    ctx.save();
+    ctx.translate(width/2 - player.x, height/2 - player.y);
+    // حدود العالم
+    ctx.strokeStyle = "#00e5ff"; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    // الذخيرة
+    ctx.fillStyle = "yellow";
+    ammos.forEach(a => ctx.fillRect(a.x, a.y, 10, 10));
+    drawJet(player.x, player.y, player.angle);
+    ctx.restore();
+
+    if(joystick.active) {
+        ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, joystick.limit, 0, Math.PI*2);
+        ctx.strokeStyle = "rgba(0,229,255,0.3)"; ctx.stroke();
+        ctx.beginPath(); ctx.arc(joystick.currX, joystick.currY, 30, 0, Math.PI*2);
+        ctx.fillStyle = "rgba(0,229,255,0.5)"; ctx.fill();
+    }
+    drawMinimap();
+}
+
+function drawMinimap() {
+    mCtx.clearRect(0, 0, 150, 150);
+    const s = 150 / WORLD_SIZE;
+    mCtx.fillStyle = "#00ff00"; mCtx.fillRect(player.x*s, player.y*s, 4, 4);
+}
+
+function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+init();
+</script>
+</body>
+</html>
